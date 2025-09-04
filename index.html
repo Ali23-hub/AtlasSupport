@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پشتیبانی اطلس سیتی</title>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap" rel="stylesheet">
+<style>
+body {
+    margin: 0;
+    font-family: 'Lalezar', cursive;
+    background: #6a0dad;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+h1 {
+    margin: 20px 0;
+    font-size: 36px;
+    text-align: center;
+}
+.container {
+    width: 100%;
+    max-width: 450px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 15px;
+    background: #6a0dad;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+textarea {
+    width: 100%;
+    height: 100px;
+    border-radius: 15px;
+    border: none;
+    padding: 10px;
+    font-size: 18px;
+    resize: none;
+    font-family: 'Lalezar', cursive;
+}
+input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border-radius: 25px;
+    border: none;
+    font-size: 18px;
+    margin-bottom: 15px;
+    font-family: 'Lalezar', cursive;
+}
+button {
+    font-family: 'Lalezar', cursive;
+    cursor: pointer;
+}
+.circleBtn {
+    margin-top: 10px;
+    background-color: #fff;
+    color: #6a0dad;
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    font-size: 20px;
+    border: none;
+    transition: 0.3s;
+}
+.circleBtn:hover { opacity: 0.8; }
+.roundedBtn {
+    margin-top: 15px;
+    background-color: #ffeb3b;
+    color: #000;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 400px;
+    padding: 12px;
+    font-size: 20px;
+    border: none;
+    transition: 0.3s;
+}
+.roundedBtn:hover { opacity: 0.8; }
+#confirmPanel p {
+    text-align: center;
+    font-size: 22px;
+    margin-bottom: 15px;
+}
+#messages {
+    width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+.msgBox {
+    background: rgba(255,255,255,0.2);
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    word-wrap: break-word;
+}
+.msgBox strong { display: block; }
+.redBtn {
+    background-color: #ff4d4d;
+    color: #fff;
+    border-radius: 25px;
+    width: 90%;
+    max-width: 400px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: none;
+    font-size: 20px;
+}
+</style>
+</head>
+<body>
+<h1>پشتیبانی اطلس سیتی</h1>
+
+<!-- فرم کاربر -->
+<div id="userForm" class="container" style="display:flex;">
+    <textarea id="userMessage" placeholder="پیام خود را اینجا بنویسید"></textarea>
+    <button class="circleBtn" onclick="askName()">ارسال</button>
+    <button class="roundedBtn" onclick="showAdminLogin()">پنل مدیریت</button>
+</div>
+
+<!-- فرم وارد کردن نام -->
+<div id="namePanel" class="container">
+    <input type="text" id="userName" placeholder="اسم خود را وارد کنید">
+    <button class="roundedBtn" onclick="sendMessage()">تایید</button>
+</div>
+
+<!-- تایید ارسال پیام -->
+<div id="confirmPanel" class="container">
+    <p>پیام شما در کانال روبیکا جواب داده می‌شود</p>
+    <button class="redBtn" onclick="goRubika()">روبیکا</button>
+    <button class="roundedBtn" onclick="backToHome()">برگشت</button>
+</div>
+
+<!-- پنل مدیریت -->
+<div id="adminPanel" class="container">
+    <input type="password" id="adminPass" placeholder="رمز عبور">
+    <button class="roundedBtn" onclick="checkPassword()">ورود</button>
+    <p id="loginMsg" style="color:red;"></p>
+    <div id="messagesDiv">
+        <div id="messages"></div>
+        <button class="roundedBtn" onclick="logoutAdmin()">خروج</button>
+    </div>
+</div>
+
+<!-- Firebase بدون module (نسخه سازگار) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyDS2Rn5ctTM5tRVTMvaWBGnf-xZoxOWz8Y",
+    authDomain: "atlascitysupport.firebaseapp.com",
+    projectId: "atlascitysupport",
+    storageBucket: "atlascitysupport.appspot.com",
+    messagingSenderId: "450316833960",
+    appId: "1:450316833960:web:8cc48fd12ce545bccf9e9d",
+    measurementId: "G-BTDL1CY1Z7"
+};
+firebase.initializeApp(firebaseConfig);
+const analytics = firebase.analytics();
+const db = firebase.firestore();
+
+function hideAll() { document.querySelectorAll('.container').forEach(c => c.style.display = 'none'); }
+
+function askName() {
+    const msg = document.getElementById('userMessage').value.trim();
+    if(msg===''){ alert('پیام خالی است'); return; }
+    hideAll();
+    document.getElementById('namePanel').style.display='flex';
+}
+
+async function sendMessage() {
+    const name = document.getElementById('userName').value.trim();
+    const msg = document.getElementById('userMessage').value.trim();
+    if(name===''){ alert('نام معتبر نیست'); return; }
+    try {
+        await db.collection("messages").add({name: name, message: msg, timestamp: new Date()});
+        hideAll();
+        document.getElementById('confirmPanel').style.display='flex';
+        document.getElementById('userName').value='';
+        document.getElementById('userMessage').value='';
+    } catch(e){
+        console.error("Firebase Error:", e);
+        alert('خطا در ارسال پیام: ' + e.message);
+    }
+}
+
+function goRubika(){ window.open('https://rubika.ir/joinc/DIBIIHAI0JTYUIFDVLNYAIGVSVCPFEFB','_blank'); }
+function backToHome(){ hideAll(); document.getElementById('userForm').style.display='flex'; }
+
+function showAdminLogin(){
+    hideAll();
+    document.getElementById('adminPanel').style.display='flex';
+    document.getElementById('messagesDiv').style.display='none';
+    document.getElementById('adminPass').style.display='block';
+    document.querySelector('#adminPanel button').style.display='block';
+}
+
+async function checkPassword(){
+    const pass = document.getElementById('adminPass').value;
+    if(pass==='adgjlxvn'){
+        document.getElementById('loginMsg').innerText='';
+        document.getElementById('messagesDiv').style.display='block';
+        document.getElementById('adminPass').style.display='none';
+        document.querySelector('#adminPanel button').style.display='none';
+        await loadMessages();
+    } else document.getElementById('loginMsg').innerText='رمز اشتباه است';
+}
+
+async function loadMessages(){
+    const snapshot = await db.collection("messages").orderBy("timestamp","desc").get();
+    const container = document.getElementById('messages');
+    container.innerHTML='';
+    snapshot.forEach(doc=>{
+        const m = doc.data();
+        const div = document.createElement('div');
+        div.className='msgBox';
+        div.innerHTML=`<strong>${m.name}:</strong> ${m.message}`;
+        container.appendChild(div);
+    });
+}
+
+function logoutAdmin(){
+    hideAll();
+    document.getElementById('userForm').style.display='flex';
+    document.getElementById('adminPass').value='';
+}
+</script>
+</body>
+</html>
